@@ -1,0 +1,102 @@
+%!TEX root=../protocol.tex	% Optional
+
+\section{Umsetzung}
+
+% CITE: http://programmerguru.com/android-tutorial/android-restful-webservice-tutorial-how-to-call-restful-webservice-in-android-part-3/
+Diese Umsetzung basiert auf GK 9.3 und dem Tutorial von programmerguru.com \cite{programmerguru-online}. Für die Entwicklung wurde Android Studio auf Windows verwendet. 
+
+\subsection{REST-Schnittstelle}
+Die Client-REST-Schnittstelle besteht aus folgenden Klassen:
+\begin{itemize}
+	\item \codein{java}{RESTConfig}
+	\item \codein{java}{RESTExecutor}
+	\item \codein{java}{RESTFailedCallback}
+	\item \codein{java}{RESTSuccessCallback}
+\end{itemize}
+
+\subsubsection{RESTConfig}
+Diese Klasse beschreibt die IP und den Hostname des REST-Service und dessen Endpunkte für Login und Registrierung. Es handelt sich dabei um konstante statische Felder die vom Entwickler selbst festgelegt werden.
+
+\subsubsection{RESTFailedCallback und RESTSuccessCallback}
+Diese Interfaces dienen als Callback-Interfaces für die RESTExecutor-Klasse. Da jeweils nur eine Interface-Methode deklariert wurde, kann dies mit Java Lambda-Expression verwendet werden.
+
+\subsubsection{RESTExecutor}
+Die Klasse \codein{text}{RESTExecutor} bietet statische Methoden für die Ausführung von REST-Befehlen. Intern wird die Klasse \codein{text}{AsyncHttpClient} verwendet, damit die GUI weiterhin responsiv ist. Daher müssen diese Methoden auch in der Android-Main-Loop ausgeführt werden. Für GUI-Applikationen ist dies kein Problem, da diese sowieso in der Android-Main-Loop ausgeführt werden. Unit-Tests hingegen führen Tests nicht in der Android-Main-Loop aus. Daher muss bei Unit-Tests explizit eine Task hinzugefügt werden.
+
+
+\paragraph{RESTExecutor.ExecuteLoginRequest}
+Diese Methode führt den REST-Request für ein Login aus. Der Endpunkt \codein{text}{<host>:port/login-request} wird angesprochen die die Parameter \codein{text}{username} und \codein{text}{password} werden übergeben. Zurückgegeben wird ein JSON-Objekt mit einem Statuscode. Je nach Statuscode wird der Callback für einen erfolgreichen Request oder der Fehler-Callback-Funktion bei einem Fehler aufgerufen.
+
+\begin{listing}
+\begin{code}{java}
+public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+	try {
+		String response = new String(responseBody, "UTF-8");
+		// JSON Object
+		JSONObject obj = new JSONObject(response);
+		
+		int statusResponseCode = obj.getInt("code");
+		// When the JSON response has status boolean value assigned with true
+		if(statusResponseCode == 0) {
+			successCallback.onSuccess();
+		} else if(statusResponseCode == 1) {
+			failedCallback.onFailed("User does not exist!");
+		} else if(statusResponseCode == 2) {
+			failedCallback.onFailed("Invalid password, try again!");
+		} else { // Else display error message
+		failedCallback.onFailed("Error: Unknown error code");
+		}
+	} catch (UnsupportedEncodingException e) {
+		failedCallback.onFailed("Error Occured [Server's JSON response is not properly UTF8 encoded]!");
+	} catch (JSONException e) {
+		failedCallback.onFailed("Error Occured [Server's JSON response might be invalid]!");
+	}
+}
+
+@Override
+public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+	// When Http response code is '404'
+	if(statusCode == 404){
+		failedCallback.onFailed("Requested resource not found");
+	} else if(statusCode == 500){
+	failedCallback.onFailed("Something went wrong at server end");
+	} else {
+		failedCallback.onFailed("Unexpected Error occcured! [Most common Error: Device might not be 	connected to Internet or remote server is not up and running]");
+	}
+}
+
+\end{code}
+\caption{Handler für den REST-Login-Request}
+\end{listing}
+
+\paragraph{RESTExecutor.ExecuteRegisterRequest}
+
+
+
+% TODO: Cite
+\subsection{GUI}
+Die GUI-Klassen wurde vom Programmerguru-Tutorial \cite{programmerguru-online} übernommen und nur leicht verändert \cite{programmerguru-online}. So nimmt die Login-Activity keine E-Mail-Adresse sondern den Benutzername entgegen. Die Methode \codein{text}{invokeWS} wurde in \codein{text}{RESTExecutor} extrahiert, sodass diese mit Unit-Tests getestet werden kann. 
+  
+
+\subsection{Deployment}
+Bevor das Deployment gestartet werden kann muss der Hostname des REST-Services in der Klasse \codein{text}{RESTConfig.URL_MAIN} gesetzt werden. Dies inkludiert die IP/URL inkl. Port \newline(Beispiel: \codein{java}{URL_MAIN = "http://192.168.0.50:3000"}).
+
+Als nächstes muss der REST-Service selbst gestartet werden. Dies ist im Protokoll von GK 9.3 beschrieben.
+
+
+% CITE https://stackoverflow.com/questions/4974568/how-do-i-launch-the-android-emulator-from-the-command-line
+Als nächstes muss ein Emulator gestartet werden. Dies kann mit \codein{text}{emulator @name-of-your-emulator} erzielt werden (wo ``name-of-your-emulator'' ist der Name des Emulators). Will man wissen welche virtuelle Geräte vorhanden sind kann man dies mit \codein{text}{emulator -list-avds} auflisten. \cite{stackoverflow-launch}
+
+Die Emulator-Binary ist in \codein{text}{${ANDROID_SDK}/tools/emulator} zu finden.
+
+Wurde der Emulator gestartet und das Android-Betriebssystem vollständig initialisiert, so kann nun das Projekt gestartet werden. Folgende Aktionen sind möglich:
+\begin{itemize}
+	\item \codein{text}{gradlew build} - Baut das Projekt
+	\item \codein{text}{gradlew installDebug} - Erstellt eine Debug-APK-Datei, welches auf einem virtuellen Android-Gerät installiert wird. Dabei muss ein virtuelles Android-Gerät bereits laufen.
+	\item \codein{text}{gradlew connectedDebugAndroidTest} - Erstellt eine Debug-APK-Datei und lässt die Tests auf einem virtuellen Android-Gerät ausgeführt wird. Dabei muss eine virtuelles Android-Gerät bereits laufen.
+\end{itemize}
+
+Nach dem Starten des Emulators und dem Ausführen des Befehls \codein{text}{gradlew installDebug} sollte die App im Launcher des virtuellen Android-Gerät vorhanden und ausführbar sein.
+
+
+
