@@ -5,6 +5,14 @@
 % CITE: http://programmerguru.com/android-tutorial/android-restful-webservice-tutorial-how-to-call-restful-webservice-in-android-part-3/
 Diese Umsetzung basiert auf GK 9.3 und dem Tutorial von programmerguru.com \cite{programmerguru-online}. Für die Entwicklung wurde Android Studio auf Windows verwendet. 
 
+\subsection{Voraussetzungen}
+Für die Umsetzung ist folgendes Vorausgesetzt:
+\begin{itemize}
+	\item Java-Umgebung
+	\item Android SDK
+	\item Ein konfiguriertes virtuelles Android-Gerät mit API-Level 23 oder höher. 
+\end{itemize}
+
 \subsection{REST-Schnittstelle}
 Die Client-REST-Schnittstelle besteht aus folgenden Klassen:
 \begin{itemize}
@@ -69,13 +77,37 @@ public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Thr
 \caption{Handler für den REST-Login-Request}
 \end{listing}
 
-\paragraph{RESTExecutor.ExecuteRegisterRequest}
+Je nach Fehlercode wird dann eine Nachricht zurückgegeben, die dann dem Benutzer angezeigt werden kann.
 
+\paragraph{RESTExecutor.ExecuteRegisterRequest}
+Diese Funktion arbeitet gleich wie \codein{text}{RESTExecutor.ExecuteLoginRequest} mit dem Unterschied, dass hier die Registrierung übernommen wird. Als Parameter muss Email, Nutzername und Passwort übergeben werden. Auch hier können Fehlercodes übergeben werden, jedoch zeichnen diese andere Fehler aus im Vergleich von \codein{text}{RESTExecutor.ExecuteLoginRequest}.
+
+\begin{listing}
+\begin{code}{java}
+String response = new String(responseBody, "UTF-8");
+// JSON Object
+JSONObject obj = new JSONObject(response);
+
+int statusResponseCode = obj.getInt("code");
+// When the JSON response has status boolean value assigned with true
+if(statusResponseCode == 0){
+    successCallback.onSuccess();
+} else if(statusResponseCode == 1) {
+    failedCallback.onFailed("User already exist!");
+} else if(statusResponseCode == 2) {
+    failedCallback.onFailed("Failed to register, try again later!");
+} else { // Else display error message
+    failedCallback.onFailed("Error: Unknown error code");
+}
+
+\end{code}
+\caption{Handler für den REST-Register-Request}
+\end{listing}
 
 
 % TODO: Cite
 \subsection{GUI}
-Die GUI-Klassen wurde vom Programmerguru-Tutorial \cite{programmerguru-online} übernommen und nur leicht verändert \cite{programmerguru-online}. So nimmt die Login-Activity keine E-Mail-Adresse sondern den Benutzername entgegen. Die Methode \codein{text}{invokeWS} wurde in \codein{text}{RESTExecutor} extrahiert, sodass diese mit Unit-Tests getestet werden kann. 
+Die GUI-Klassen wurde vom Programmerguru-Tutorial übernommen und nur leicht verändert \cite{programmerguru-online}. So nimmt die Login-Activity keine E-Mail-Adresse sondern den Benutzername entgegen. Die Methode \codein{text}{invokeWS} wurde in \codein{text}{RESTExecutor} extrahiert, sodass diese mit Unit-Tests getestet werden kann. 
   
 
 \subsection{Deployment}
